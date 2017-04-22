@@ -1,0 +1,42 @@
+package homie
+
+type Node interface {
+	Name() string
+	Properties() []string
+	Set(property string, value string)
+}
+
+type node struct {
+	name       string
+	nodeType   string
+	properties map[string]string
+	callback   func(property string, value string)
+}
+
+func NewNode(name string, nodeType string, callback func(property string, value string)) Node {
+	return &node{
+		name:       name,
+		nodeType:   nodeType,
+		callback:   callback,
+		properties: map[string]string{},
+	}
+}
+
+func (node *node) Name() string {
+	return node.name
+}
+
+func (node *node) Properties() []string {
+	properties := make([]string, len(node.properties))
+	idx := 0
+	for property := range node.properties {
+		properties[idx] = property
+		idx += 1
+	}
+	return properties
+}
+
+func (node *node) Set(property string, value string) {
+	node.properties[property] = value
+	node.callback(property, value)
+}

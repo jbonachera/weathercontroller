@@ -18,6 +18,13 @@ type Client interface {
 	Mac() string
 	Stop() error
 	FirmwareName() string
+	AddNode(name string, nodeType string)
+	Nodes() map[string]Node
+}
+
+type stateMessage struct {
+	subtopic string
+	payload  string
 }
 
 type client struct {
@@ -29,8 +36,10 @@ type client struct {
 	firmwareName   string
 	stopChan       chan bool
 	stopStatusChan chan bool
+	publishChan    chan stateMessage
 	bootTime       time.Time
 	mqttClient     mqtt.Client
+	nodes          map[string]Node
 }
 
 func findMacAndIP(ifs []net.Interface) (string, string, error) {
@@ -60,7 +69,7 @@ func NewClient(prefix string, server string, port int, ssl bool, ssl_auth bool, 
 	} else {
 		url = "tcp://" + url
 	}
-	return &client{prefix: prefix, url: url, bootTime: time.Now(), firmwareName: firmwareName}
+	return &client{prefix: prefix, url: url, bootTime: time.Now(), firmwareName: firmwareName, nodes: map[string]Node{}, publishChan: make(chan stateMessage, 10)}
 
 }
 func (homieClient *client) getDevicePrefix() string {
@@ -77,8 +86,7 @@ func (homieClient *client) getMQTTOptions() *mqtt.ClientOptions {
 }
 
 func (homieClient *client) publish(subtopic string, payload string) {
-	topic := homieClient.getDevicePrefix() + subtopic
-	homieClient.mqttClient.Publish(topic, 1, true, payload)
+	homieClient.publishChan <- stateMessage{subtopic: subtopic, payload: payload}
 }
 
 func (homieClient *client) onConnectHandler(client mqtt.Client) {
@@ -97,6 +105,7 @@ func (homieClient *client) onConnectHandler(client mqtt.Client) {
 	homieClient.ip = ip
 	homieClient.mac = mac
 	homieClient.id = id
+	go homieClient.loop()
 
 	homieClient.publish("$homie", "2.0.0")
 	homieClient.publish("$name", homieClient.FirmwareName())
@@ -109,7 +118,6 @@ func (homieClient *client) onConnectHandler(client mqtt.Client) {
 
 	// homieClient must be sent last
 	homieClient.publish("$online", "true")
-	go homieClient.loop()
 }
 
 func (homieClient *client) Start() error {
@@ -136,6 +144,10 @@ func (homieClient *client) loop() {
 	homieClient.stopStatusChan = make(chan bool, 1)
 	for run {
 		select {
+		case msg := <-homieClient.publishChan:
+			topic := homieClient.getDevicePrefix() + msg.subtopic
+			homieClient.mqttClient.Publish(topic, 1, true, msg.payload)
+			break
 		case <-homieClient.stopChan:
 			run = false
 			break
@@ -183,4 +195,18 @@ func (homieClient *client) Ip() string {
 }
 func (homieClient *client) FirmwareName() string {
 	return homieClient.firmwareName
+}
+
+func (homieClient *client) AddNode(name string, nodeType string) {
+	homieClient.nodes[name] = NewNode(
+		name, nodeType,
+		func(property string, value string) {
+			homieClient.publish(name+"/"+property, value)
+			homieClient.publish(name+"/$properties", strings.Join(homieClient.nodes[name].Properties(), ","))
+		})
+	homieClient.publish(name+"/$type", nodeType)
+}
+
+func (homieClient *client) Nodes() map[string]Node {
+	return homieClient.nodes
 }
