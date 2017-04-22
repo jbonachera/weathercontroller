@@ -16,8 +16,6 @@ func main() {
 	homieClient := homie.NewClient("devices/", "172.20.0.100", 1883, false, false, "weatherStation")
 	homieClient.Start()
 	fmt.Println("connected to mqtt broker")
-	homieClient.AddNode("temperature", "temperature")
-	homieClient.Nodes()["temperature"].Set("degrees", "20.0")
 	select {
 	case <-sigc:
 		fmt.Println("received interrupt - aborting operations")
