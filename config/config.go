@@ -26,7 +26,7 @@ func LoadDefaults() {
 	store = Format{
 		Mqtt: MQTTFormat{
 			Host:     "iot.eclipse.org",
-			Port:     1883,
+			Port:     8883,
 			Ssl:      true,
 			Ssl_Auth: false,
 		},
