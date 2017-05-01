@@ -26,7 +26,10 @@ type stateMessage struct {
 	subtopic string
 	payload  string
 }
-
+type subscribeMessage struct {
+	subtopic string
+	callback func(path string, payload string)
+}
 type client struct {
 	id             string
 	ip             string
@@ -37,6 +40,7 @@ type client struct {
 	stopChan       chan bool
 	stopStatusChan chan bool
 	publishChan    chan stateMessage
+	subscribeChan  chan subscribeMessage
 	bootTime       time.Time
 	mqttClient     mqtt.Client
 	nodes          map[string]Node
@@ -71,7 +75,15 @@ func NewClient(prefix string, server string, port int, ssl bool, ssl_auth bool, 
 	} else {
 		url = "tcp://" + url
 	}
-	return &client{prefix: prefix, url: url, bootTime: time.Now(), firmwareName: firmwareName, nodes: map[string]Node{}, publishChan: make(chan stateMessage, 10)}
+	return &client{
+		prefix:        prefix,
+		url:           url,
+		bootTime:      time.Now(),
+		firmwareName:  firmwareName,
+		nodes:         map[string]Node{},
+		publishChan:   make(chan stateMessage, 10),
+		subscribeChan: make(chan subscribeMessage, 10),
+	}
 
 }
 func (homieClient *client) getDevicePrefix() string {
@@ -89,6 +101,10 @@ func (homieClient *client) getMQTTOptions() *mqtt.ClientOptions {
 
 func (homieClient *client) publish(subtopic string, payload string) {
 	homieClient.publishChan <- stateMessage{subtopic: subtopic, payload: payload}
+}
+
+func (homieClient *client) subscribe(subtopic string, callback func(path string, payload string)) {
+	homieClient.subscribeChan <- subscribeMessage{subtopic: subtopic, callback: callback}
 }
 
 func (homieClient *client) onConnectHandler(client mqtt.Client) {
@@ -149,6 +165,12 @@ func (homieClient *client) loop() {
 		case msg := <-homieClient.publishChan:
 			topic := homieClient.getDevicePrefix() + msg.subtopic
 			homieClient.mqttClient.Publish(topic, 1, true, msg.payload)
+			break
+		case msg := <-homieClient.subscribeChan:
+			topic := homieClient.getDevicePrefix() + msg.subtopic
+			homieClient.mqttClient.Subscribe(topic, 1, func(mqttClient mqtt.Client, mqttMessage mqtt.Message) {
+				msg.callback(mqttMessage.Topic(), string(mqttMessage.Payload()))
+			})
 			break
 		case <-homieClient.stopChan:
 			run = false
