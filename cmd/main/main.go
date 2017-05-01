@@ -33,6 +33,10 @@ func main() {
 					"pressure",
 					"battery",
 				},
+				[]homie.SettableProperty{
+					{"room", func(payload string) {}},
+					{"fancy_name", func(payload string) {}},
+				},
 			)
 			node = nodes[strNodeId]
 		}

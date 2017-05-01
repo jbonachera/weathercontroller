@@ -18,8 +18,13 @@ type Client interface {
 	Mac() string
 	Stop() error
 	FirmwareName() string
-	AddNode(name string, nodeType string, properties []string)
+	AddNode(name string, nodeType string, properties []string, settables []SettableProperty)
 	Nodes() map[string]Node
+}
+
+type SettableProperty struct {
+	Name     string
+	Callback func(payload string)
 }
 
 type stateMessage struct {
@@ -126,11 +131,11 @@ func (homieClient *client) onConnectHandler(client mqtt.Client) {
 	go homieClient.loop()
 
 	homieClient.publish("$homie", "2.0.0")
-	homieClient.publish("$name", homieClient.FirmwareName())
+	homieClient.publish("$Name", homieClient.FirmwareName())
 	homieClient.publish("$mac", homieClient.Mac())
 	homieClient.publish("$stats/interval", "10")
 	homieClient.publish("$localip", homieClient.Ip())
-	homieClient.publish("$fw/name", homieClient.FirmwareName())
+	homieClient.publish("$fw/Name", homieClient.FirmwareName())
 	homieClient.publish("$fw/version", "0.0.1")
 	homieClient.publish("implementation", "vx-go-homie")
 
@@ -221,14 +226,28 @@ func (homieClient *client) FirmwareName() string {
 	return homieClient.firmwareName
 }
 
-func (homieClient *client) AddNode(name string, nodeType string, properties []string) {
+func (homieClient *client) AddNode(name string, nodeType string, properties []string, settables []SettableProperty) {
 	homieClient.nodes[name] = NewNode(
 		name, nodeType, properties,
 		func(property string, value string) {
 			homieClient.publish(name+"/"+property, value)
 		})
 	homieClient.publish(name+"/$type", nodeType)
-	homieClient.publish(name+"/$properties", strings.Join(homieClient.nodes[name].Properties(), ","))
+	propertyCsv := strings.Join(homieClient.nodes[name].Properties(), ",")
+	settablesList := []string{}
+	for _, property := range settables {
+		homieClient.subscribe(name+"/"+property.Name+"/set", func(path string, payload string) {
+			homieClient.nodes[name].Set(property.Name, payload)
+			property.Callback(payload)
+		})
+		settablesList = append(settablesList, property.Name+":settable")
+	}
+	if len(settablesList) > 0 {
+		settablesCsv := strings.Join(settablesList, ",")
+		propertyCsv = propertyCsv + "," + settablesCsv
+	}
+	homieClient.publish(name+"/$properties", propertyCsv)
+
 }
 
 func (homieClient *client) Nodes() map[string]Node {
