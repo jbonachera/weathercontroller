@@ -50,7 +50,9 @@ func findMacAndIP(ifs []net.Interface) (string, string, error) {
 				continue
 			} else {
 				addresses, _ := v.Addrs()
-				return h, addresses[0].String(), nil
+				if len(addresses) > 0 {
+					return h, addresses[0].String(), nil
+				}
 			}
 		}
 	}
