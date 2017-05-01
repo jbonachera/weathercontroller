@@ -7,10 +7,10 @@ import (
 )
 
 type Metric struct {
-	Battery     float32 `json:"battery,omitempty"`
-	Temperature float32 `json:"temperature,omitempty"`
-	Humidity    float32 `json:"humidity,omitempty"`
-	Pressure    float32 `json:"pressure,omitempty"`
+	Battery     float64 `json:"battery,omitempty"`
+	Temperature float64 `json:"temperature,omitempty"`
+	Humidity    float64 `json:"humidity,omitempty"`
+	Pressure    float64 `json:"pressure,omitempty"`
 	SensorID    int     `json:"sensor_id,omitempty"`
 }
 
