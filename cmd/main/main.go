@@ -26,7 +26,14 @@ func main() {
 		strNodeId := strconv.Itoa(metric.SensorID)
 		node, found := nodes[strNodeId]
 		if !found {
-			homieClient.AddNode(strNodeId, "weather_sensor")
+			homieClient.AddNode(strNodeId, "weather_sensor",
+				[]string{
+					"temperature",
+					"humidity",
+					"pressure",
+					"battery",
+				},
+			)
 			node = nodes[strNodeId]
 		}
 		if metric.Temperature != 0 {

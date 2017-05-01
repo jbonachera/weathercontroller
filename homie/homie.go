@@ -18,7 +18,7 @@ type Client interface {
 	Mac() string
 	Stop() error
 	FirmwareName() string
-	AddNode(name string, nodeType string)
+	AddNode(name string, nodeType string, properties []string)
 	Nodes() map[string]Node
 }
 
@@ -199,14 +199,14 @@ func (homieClient *client) FirmwareName() string {
 	return homieClient.firmwareName
 }
 
-func (homieClient *client) AddNode(name string, nodeType string) {
+func (homieClient *client) AddNode(name string, nodeType string, properties []string) {
 	homieClient.nodes[name] = NewNode(
-		name, nodeType,
+		name, nodeType, properties,
 		func(property string, value string) {
 			homieClient.publish(name+"/"+property, value)
-			homieClient.publish(name+"/$properties", strings.Join(homieClient.nodes[name].Properties(), ","))
 		})
 	homieClient.publish(name+"/$type", nodeType)
+	homieClient.publish(name+"/$properties", strings.Join(homieClient.nodes[name].Properties(), ","))
 }
 
 func (homieClient *client) Nodes() map[string]Node {

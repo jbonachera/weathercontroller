@@ -13,13 +13,17 @@ type node struct {
 	callback   func(property string, value string)
 }
 
-func NewNode(name string, nodeType string, callback func(property string, value string)) Node {
-	return &node{
+func NewNode(name string, nodeType string, properties []string, callback func(property string, value string)) Node {
+	newnode := &node{
 		name:       name,
 		nodeType:   nodeType,
 		callback:   callback,
 		properties: map[string]string{},
 	}
+	for _, property := range properties {
+		newnode.properties[property] = ""
+	}
+	return newnode
 }
 
 func (node *node) Name() string {
