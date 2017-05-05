@@ -18,7 +18,7 @@ type Metric struct {
 }
 
 func (metric *Metric) Dump() string {
-	return fmt.Sprintf("Temperature: %f, Humidity: %f, Pressure: %f, Battery: %f", metric.Temperature, metric.Humidity, metric.Pressure, metric.Battery)
+	return fmt.Sprintf("Temperature: %f, Humidity: %f, Pressure: %f, Battery: %f, RSSI: %d, Uptime: %d", metric.Temperature, metric.Humidity, metric.Pressure, metric.Battery, metric.RSSI, metric.Uptime)
 }
 
 type Client interface {
