@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	"github.com/google/uuid"
 	"net"
 	"strconv"
 	"strings"
@@ -29,10 +30,12 @@ type SettableProperty struct {
 }
 
 type stateMessage struct {
+	Uuid     uuid.UUID
 	subtopic string
 	payload  string
 }
 type subscribeMessage struct {
+	Uuid     uuid.UUID
 	subtopic string
 	callback func(path string, payload string)
 }
@@ -105,12 +108,18 @@ func (homieClient *client) getMQTTOptions() *mqtt.ClientOptions {
 	return o
 }
 
-func (homieClient *client) publish(subtopic string, payload string) {
-	homieClient.publishChan <- stateMessage{subtopic: subtopic, payload: payload}
+func (homieClient *client) publish(subtopic string, payload string) string {
+	id := uuid.New()
+	homieClient.publishChan <- stateMessage{subtopic: subtopic, payload: payload, Uuid: id}
+	fmt.Println("publication id", id, "submitted")
+	return id.String()
 }
 
-func (homieClient *client) subscribe(subtopic string, callback func(path string, payload string)) {
-	homieClient.subscribeChan <- subscribeMessage{subtopic: subtopic, callback: callback}
+func (homieClient *client) subscribe(subtopic string, callback func(path string, payload string)) string {
+	id := uuid.New()
+	homieClient.subscribeChan <- subscribeMessage{subtopic: subtopic, callback: callback, Uuid: id}
+	fmt.Println("subscription id", id, "submitted")
+	return id.String()
 }
 
 func (homieClient *client) onConnectHandler(client mqtt.Client) {
@@ -172,13 +181,14 @@ func (homieClient *client) loop() {
 		case msg := <-homieClient.publishChan:
 			topic := homieClient.getDevicePrefix() + msg.subtopic
 			homieClient.mqttClient.Publish(topic, 1, true, msg.payload)
+			fmt.Println("publication id", msg.Uuid.String(), "processed")
 			break
 		case msg := <-homieClient.subscribeChan:
 			topic := homieClient.getDevicePrefix() + msg.subtopic
-			fmt.Println("subscribed to", topic)
 			homieClient.mqttClient.Subscribe(topic, 1, func(mqttClient mqtt.Client, mqttMessage mqtt.Message) {
 				msg.callback(mqttMessage.Topic(), string(mqttMessage.Payload()))
 			})
+			fmt.Println("subscription id", msg.Uuid, "processed")
 			break
 		case <-homieClient.stopChan:
 			run = false
