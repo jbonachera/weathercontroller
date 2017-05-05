@@ -256,9 +256,10 @@ func (homieClient *client) AddNode(name string, nodeType string, properties []st
 	settablesList := []string{}
 	for _, property := range settables {
 		fmt.Println("Subscribing for settable properties notifications: ", property.Name)
-		homieClient.subscribe(name+"/"+property.Name+"/set", func(path string, payload string) {
-			fmt.Println("Settable property update (from path", path, "):", property.Name, " -> ", payload)
-			homieClient.nodes[name].Set(property.Name, payload)
+		prop := property.Name
+		homieClient.subscribe(name+"/"+prop+"/set", func(path string, payload string) {
+			fmt.Println("Settable property update (from path", path, "):", prop, " -> ", payload)
+			homieClient.nodes[name].Set(prop, payload)
 			property.Callback(payload)
 		})
 		settablesList = append(settablesList, property.Name+":settable")
