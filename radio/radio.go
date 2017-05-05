@@ -10,6 +10,8 @@ type Metric struct {
 	Battery     float64 `json:"battery,omitempty"`
 	Temperature float64 `json:"temperature,omitempty"`
 	Humidity    float64 `json:"humidity,omitempty"`
+	Uptime      int     `json:"uptime,omitempty"`
+	RSSI        int     `json:"rssi,omitempty"`
 	Pressure    float64 `json:"pressure,omitempty"`
 	SensorID    int     `json:"sensor_id,omitempty"`
 }

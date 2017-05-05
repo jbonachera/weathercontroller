@@ -14,7 +14,10 @@ func floatToString(i float64) string {
 	str := strconv.FormatFloat(i, 'f', 2, 64)
 	return str
 }
-
+func intToString(i int) string {
+	str := strconv.Itoa(i)
+	return str
+}
 func main() {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, os.Kill)
@@ -31,6 +34,8 @@ func main() {
 					"temperature",
 					"humidity",
 					"pressure",
+					"rssi",
+					"uptime",
 					"battery",
 				},
 				[]homie.SettableProperty{
@@ -52,6 +57,13 @@ func main() {
 		if metric.Battery != 0 {
 			node.Set("battery", floatToString(metric.Battery))
 		}
+		if metric.Uptime != 0 {
+			node.Set("uptime", intToString(metric.Uptime))
+		}
+		if metric.RSSI != 0 {
+			node.Set("rssi", intToString(metric.RSSI))
+		}
+
 	})
 	homieClient.Start()
 	radioClient.Start("azertyuiopqsdfgh", "433")
