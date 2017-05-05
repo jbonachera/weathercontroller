@@ -29,6 +29,7 @@ type SettableProperty struct {
 	Callback func(payload string)
 }
 
+// TODO track message processing time
 type stateMessage struct {
 	Uuid     uuid.UUID
 	subtopic string
