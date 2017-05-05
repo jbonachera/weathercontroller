@@ -188,7 +188,7 @@ func (homieClient *client) loop() {
 			break
 		}
 	}
-	homieClient.publish("$online", "false")
+	homieClient.mqttClient.Publish(homieClient.getDevicePrefix()+"$online", 1, true, "false")
 	homieClient.mqttClient.Disconnect(1000)
 	homieClient.stopStatusChan <- true
 }
