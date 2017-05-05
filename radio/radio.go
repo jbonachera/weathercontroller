@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/jbonachera/rfm69"
-	"time"
+	log "github.com/yanyiwu/simplelog"
 )
 
 type Metric struct {
@@ -57,17 +57,13 @@ func (c *client) Start(encryptionKey string, frequency string) error {
 	return nil
 }
 func (c *client) Stop() error {
-	fmt.Print("stopping radio subsystem... ")
+	log.Info("stopping radio subsystem")
 	c.stop <- true
 	for {
 		select {
 		case <-c.stopped:
-			fmt.Println("done")
+			log.Info("radio subsystem")
 			return nil
-		case <-time.After(1 * time.Second):
-			fmt.Print(".")
-			break
-
 		}
 	}
 
@@ -81,20 +77,20 @@ func (c *client) loop() {
 	c.rfm.OnReceive = func(d *rfm69.Data) {
 		rx <- d
 	}
-	fmt.Println("Radio subsystem started")
+	log.Info("Radio subsystem started")
 	c.running = true
 	for c.running {
 		select {
 		case data := <-rx:
 			if data.ToAddress != 255 && data.RequestAck {
-				//fmt.Println("ACK sent")
+				log.Debug("ACK sent")
 				c.rfm.Send(data.ToAck())
 			}
 			buf := bytes.NewReader(data.Data)
 			var payload Metric = Metric{}
 			err := binary.Read(buf, binary.LittleEndian, &payload)
 			if err != nil {
-				fmt.Println(err)
+				log.Error(err.Error())
 			} else {
 				c.callback(data.FromAddress, payload)
 			}

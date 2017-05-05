@@ -2,9 +2,9 @@ package homie
 
 import (
 	"errors"
-	"fmt"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/google/uuid"
+	log "github.com/yanyiwu/simplelog"
 	"net"
 	"strconv"
 	"strings"
@@ -113,14 +113,14 @@ func (homieClient *client) getMQTTOptions() *mqtt.ClientOptions {
 func (homieClient *client) publish(subtopic string, payload string) string {
 	id := uuid.New()
 	homieClient.publishChan <- stateMessage{subtopic: subtopic, payload: payload, Uuid: id}
-	fmt.Println("publication id", id, "submitted")
+	log.Debug("publication id", id, "submitted")
 	return id.String()
 }
 
 func (homieClient *client) subscribe(subtopic string, callback func(path string, payload string)) string {
 	id := uuid.New()
 	homieClient.subscribeChan <- subscribeMessage{subtopic: subtopic, callback: callback, Uuid: id}
-	fmt.Println("subscription id", id, "submitted")
+	log.Debug("subscription id", id, "submitted")
 	return id.String()
 }
 
@@ -177,20 +177,20 @@ func (homieClient *client) loop() {
 	run := true
 	homieClient.stopChan = make(chan bool, 1)
 	homieClient.stopStatusChan = make(chan bool, 1)
-	fmt.Println("MQTT subsystem started")
+	log.Info("MQTT subsystem started")
 	for run {
 		select {
 		case msg := <-homieClient.publishChan:
 			topic := homieClient.getDevicePrefix() + msg.subtopic
 			homieClient.mqttClient.Publish(topic, 1, true, msg.payload)
-			fmt.Println("publication id", msg.Uuid.String(), "processed")
+			log.Debug("publication id", msg.Uuid.String(), "processed")
 			break
 		case msg := <-homieClient.subscribeChan:
 			topic := homieClient.getDevicePrefix() + msg.subtopic
 			homieClient.mqttClient.Subscribe(topic, 1, func(mqttClient mqtt.Client, mqttMessage mqtt.Message) {
 				msg.callback(mqttMessage.Topic(), string(mqttMessage.Payload()))
 			})
-			fmt.Println("subscription id", msg.Uuid, "processed")
+			log.Debug("subscription id", msg.Uuid, "processed")
 			break
 		case <-homieClient.stopChan:
 			run = false
@@ -209,16 +209,13 @@ func (homieClient *client) publishStats() {
 	homieClient.publish("$stats/uptime", strconv.Itoa(int(time.Since(homieClient.bootTime).Seconds())))
 }
 func (homieClient *client) Stop() error {
-	fmt.Print("stopping mqtt subsystem... ")
+	log.Info("stopping mqtt subsystem")
 	homieClient.stopChan <- true
 	for {
 		select {
 		case <-homieClient.stopStatusChan:
-			fmt.Println("done")
+			log.Info("mqtt subsystem stopped")
 			return nil
-			break
-		case <-time.After(1 * time.Second):
-			fmt.Print(".")
 			break
 		}
 	}
@@ -255,10 +252,10 @@ func (homieClient *client) AddNode(name string, nodeType string, properties []st
 	propertyCsv := strings.Join(homieClient.nodes[name].Properties(), ",")
 	settablesList := []string{}
 	for _, property := range settables {
-		fmt.Println("Subscribing for settable properties notifications: ", property.Name)
+		log.Debug("Subscribing for settable properties notifications: ", property.Name)
 		prop := property.Name
 		homieClient.subscribe(name+"/"+prop+"/set", func(path string, payload string) {
-			fmt.Println("Settable property update (from path", path, "):", prop, " -> ", payload)
+			log.Debug("Settable property update (from path", path, "):", prop, " -> ", payload)
 			homieClient.nodes[name].Set(prop, payload)
 			property.Callback(payload)
 		})

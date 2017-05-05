@@ -1,6 +1,8 @@
 package homie
 
-import "fmt"
+import (
+	log "github.com/yanyiwu/simplelog"
+)
 
 type Node interface {
 	Name() string
@@ -43,7 +45,7 @@ func (node *node) Properties() []string {
 }
 
 func (node *node) Set(property string, value string) {
-	fmt.Println("node", node.name, ":", property, " -> ", value)
+	log.Debug("node", node.name, ":", property, " -> ", value)
 	node.properties[property] = value
 	node.callback(property, value)
 }

@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"github.com/jbonachera/weathercontroller/config"
 	"github.com/jbonachera/weathercontroller/homie"
 	"github.com/jbonachera/weathercontroller/radio"
+	log "github.com/yanyiwu/simplelog"
 	"os"
 	"os/signal"
 	"strconv"
@@ -21,8 +21,8 @@ func intToString(i int32) string {
 func main() {
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, os.Kill)
-
 	config.LoadDefaults()
+	log.SetLevel(log.LEVEL_INFO)
 	homieClient := homie.NewClient("devices/", "172.20.0.100", 1883, false, false, "weatherStation")
 	radioClient := radio.NewClient(100, 1, func(sensorId byte, metric radio.Metric) {
 		nodes := homieClient.Nodes()
@@ -45,8 +45,7 @@ func main() {
 			)
 			node = nodes[strNodeId]
 		}
-		fmt.Print("Sensor ", sensorId, ":\t")
-		fmt.Println(metric.Dump())
+		log.Info("Sensor " + string(sensorId) + ":" + metric.Dump())
 		node.Set("temperature", floatToString(metric.Temperature))
 		node.Set("humidity", floatToString(metric.Humidity))
 		node.Set("pressure", floatToString(metric.Pressure))
@@ -58,10 +57,10 @@ func main() {
 	radioClient.Start("azertyuiopqsdfgh", "433")
 	select {
 	case <-sigc:
-		fmt.Println("received interrupt - aborting operations")
+		log.Warn("received interrupt - aborting operations")
 		homieClient.Stop()
 		radioClient.Stop()
 		break
 	}
-	fmt.Println("main process finished")
+	log.Info("main process finished")
 }
