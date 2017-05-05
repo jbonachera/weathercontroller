@@ -1,19 +1,24 @@
 package radio
 
 import (
-	"encoding/json"
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"github.com/jbonachera/rfm69"
+	"time"
 )
 
 type Metric struct {
-	Battery     float64 `json:"battery,omitempty"`
-	Temperature float64 `json:"temperature,omitempty"`
-	Humidity    float64 `json:"humidity,omitempty"`
-	Uptime      int     `json:"uptime,omitempty"`
-	RSSI        int     `json:"rssi,omitempty"`
-	Pressure    float64 `json:"pressure,omitempty"`
-	SensorID    int     `json:"sensor_id,omitempty"`
+	Battery     float32 `json:"battery,omitempty"`
+	Temperature float32 `json:"temperature,omitempty"`
+	Humidity    float32 `json:"humidity,omitempty"`
+	Pressure    float32 `json:"pressure,omitempty"`
+	RSSI        int32   `json:"rssi,omitempty"`
+	Uptime      int32   `json:"uptime,omitempty"`
+}
+
+func (metric *Metric) Dump() string {
+	return fmt.Sprintf("Temperature: %f, Humidity: %f, Pressure: %f, Battery: %f", metric.Temperature, metric.Humidity, metric.Pressure, metric.Battery)
 }
 
 type Client interface {
@@ -26,15 +31,17 @@ type client struct {
 	networkId int
 	clientId  int
 	running   bool
-	callback  func(metric Metric)
+	callback  func(sensorId byte, metric Metric)
+	stopped   chan bool
+	stop      chan bool
 }
 
-func NewClient(networkId int, clientId int, callback func(metric Metric)) Client {
+func NewClient(networkId int, clientId int, callback func(sensorId byte, metric Metric)) Client {
 	newClient := &client{rfm: nil, networkId: networkId, clientId: clientId, running: false, callback: callback}
 	return newClient
 }
 
-func (c client) Start(encryptionKey string, frequency string) error {
+func (c *client) Start(encryptionKey string, frequency string) error {
 	var err error
 	c.rfm, err = rfm69.NewDevice(byte(c.clientId), byte(c.networkId), true)
 	if err != nil {
@@ -49,35 +56,53 @@ func (c client) Start(encryptionKey string, frequency string) error {
 	go c.loop()
 	return nil
 }
-func (c client) Stop() error {
-	c.running = false
-	return c.rfm.Close()
+func (c *client) Stop() error {
+	fmt.Print("stopping radio subsystem... ")
+	c.stop <- true
+	for {
+		select {
+		case <-c.stopped:
+			fmt.Println("done")
+			return nil
+		case <-time.After(1 * time.Second):
+			fmt.Print(".")
+			break
+
+		}
+	}
+
 }
 
-func (c client) loop() {
+func (c *client) loop() {
 	rx := make(chan *rfm69.Data, 5)
+	c.stopped = make(chan bool, 1)
+	c.stop = make(chan bool, 1)
 
 	c.rfm.OnReceive = func(d *rfm69.Data) {
 		rx <- d
 	}
+	fmt.Println("Radio subsystem started")
 	c.running = true
 	for c.running {
 		select {
 		case data := <-rx:
 			if data.ToAddress != 255 && data.RequestAck {
+				//fmt.Println("ACK sent")
 				c.rfm.Send(data.ToAck())
 			}
-			sensorId := int(data.Data[1])
-			userData := data.Data[6 : len(data.Data)-1]
+			buf := bytes.NewReader(data.Data)
 			var payload Metric = Metric{}
-			err := json.Unmarshal(userData, &payload)
+			err := binary.Read(buf, binary.LittleEndian, &payload)
 			if err != nil {
 				fmt.Println(err)
 			} else {
-				payload.SensorID = sensorId
-				c.callback(payload)
+				c.callback(data.FromAddress, payload)
 			}
+		case <-c.stop:
+			c.running = false
 		}
 
 	}
+	c.rfm.Close()
+	c.stopped <- true
 }

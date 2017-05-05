@@ -1,5 +1,7 @@
 package homie
 
+import "fmt"
+
 type Node interface {
 	Name() string
 	Properties() []string
@@ -41,6 +43,7 @@ func (node *node) Properties() []string {
 }
 
 func (node *node) Set(property string, value string) {
+	fmt.Println("node", node.name, ":", property, " -> ", value)
 	node.properties[property] = value
 	node.callback(property, value)
 }

@@ -10,12 +10,12 @@ import (
 	"strconv"
 )
 
-func floatToString(i float64) string {
-	str := strconv.FormatFloat(i, 'f', 2, 64)
+func floatToString(i float32) string {
+	str := strconv.FormatFloat(float64(i), 'f', 2, 64)
 	return str
 }
-func intToString(i int) string {
-	str := strconv.Itoa(i)
+func intToString(i int32) string {
+	str := strconv.Itoa(int(i))
 	return str
 }
 func main() {
@@ -24,9 +24,9 @@ func main() {
 
 	config.LoadDefaults()
 	homieClient := homie.NewClient("devices/", "172.20.0.100", 1883, false, false, "weatherStation")
-	radioClient := radio.NewClient(100, 1, func(metric radio.Metric) {
+	radioClient := radio.NewClient(100, 1, func(sensorId byte, metric radio.Metric) {
 		nodes := homieClient.Nodes()
-		strNodeId := strconv.Itoa(metric.SensorID)
+		strNodeId := strconv.Itoa(int(sensorId))
 		node, found := nodes[strNodeId]
 		if !found {
 			homieClient.AddNode(strNodeId, "weather_sensor",
@@ -45,29 +45,17 @@ func main() {
 			)
 			node = nodes[strNodeId]
 		}
-		if metric.Temperature != 0 {
-			node.Set("temperature", floatToString(metric.Temperature))
-		}
-		if metric.Humidity != 0 {
-			node.Set("humidity", floatToString(metric.Humidity))
-		}
-		if metric.Pressure != 0 {
-			node.Set("pressure", floatToString(metric.Pressure))
-		}
-		if metric.Battery != 0 {
-			node.Set("battery", floatToString(metric.Battery))
-		}
-		if metric.Uptime != 0 {
-			node.Set("uptime", intToString(metric.Uptime))
-		}
-		if metric.RSSI != 0 {
-			node.Set("rssi", intToString(metric.RSSI))
-		}
+		fmt.Print("Sensor ", sensorId, ":\t")
+		fmt.Println(metric.Dump())
+		node.Set("temperature", floatToString(metric.Temperature))
+		node.Set("humidity", floatToString(metric.Humidity))
+		node.Set("pressure", floatToString(metric.Pressure))
+		node.Set("battery", floatToString(metric.Battery))
+		node.Set("rssi", intToString(metric.RSSI))
 
 	})
 	homieClient.Start()
 	radioClient.Start("azertyuiopqsdfgh", "433")
-	fmt.Println("Subsystems booted")
 	select {
 	case <-sigc:
 		fmt.Println("received interrupt - aborting operations")

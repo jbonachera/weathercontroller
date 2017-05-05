@@ -2,6 +2,7 @@ package homie
 
 import (
 	"errors"
+	"fmt"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"net"
 	"strconv"
@@ -139,7 +140,7 @@ func (homieClient *client) onConnectHandler(client mqtt.Client) {
 	homieClient.publish("$fw/version", "0.0.1")
 	homieClient.publish("implementation", "vx-go-homie")
 
-	// homieClient must be sent last
+	// $online must be sent last
 	homieClient.publish("$online", "true")
 }
 
@@ -165,6 +166,7 @@ func (homieClient *client) loop() {
 	run := true
 	homieClient.stopChan = make(chan bool, 1)
 	homieClient.stopStatusChan = make(chan bool, 1)
+	fmt.Println("MQTT subsystem started")
 	for run {
 		select {
 		case msg := <-homieClient.publishChan:
@@ -173,6 +175,7 @@ func (homieClient *client) loop() {
 			break
 		case msg := <-homieClient.subscribeChan:
 			topic := homieClient.getDevicePrefix() + msg.subtopic
+			fmt.Println("subscribed to", topic)
 			homieClient.mqttClient.Subscribe(topic, 1, func(mqttClient mqtt.Client, mqttMessage mqtt.Message) {
 				msg.callback(mqttMessage.Topic(), string(mqttMessage.Payload()))
 			})
@@ -194,15 +197,19 @@ func (homieClient *client) publishStats() {
 	homieClient.publish("$stats/uptime", strconv.Itoa(int(time.Since(homieClient.bootTime).Seconds())))
 }
 func (homieClient *client) Stop() error {
+	fmt.Print("stopping mqtt subsystem... ")
 	homieClient.stopChan <- true
-	select {
-	case <-homieClient.stopStatusChan:
-		return nil
-		break
-	case <-time.After(10 * time.Second):
-		break
+	for {
+		select {
+		case <-homieClient.stopStatusChan:
+			fmt.Println("done")
+			return nil
+			break
+		case <-time.After(1 * time.Second):
+			fmt.Print(".")
+			break
+		}
 	}
-	return errors.New("MQTT did not stop after 10s")
 }
 
 func (homieClient *client) Id() string {
@@ -236,7 +243,9 @@ func (homieClient *client) AddNode(name string, nodeType string, properties []st
 	propertyCsv := strings.Join(homieClient.nodes[name].Properties(), ",")
 	settablesList := []string{}
 	for _, property := range settables {
+		fmt.Println("Subscribing for settable properties notifications: ", property.Name)
 		homieClient.subscribe(name+"/"+property.Name+"/set", func(path string, payload string) {
+			fmt.Println("Settable property update (from path", path, "):", property.Name, " -> ", payload)
 			homieClient.nodes[name].Set(property.Name, payload)
 			property.Callback(payload)
 		})
