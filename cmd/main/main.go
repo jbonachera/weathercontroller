@@ -24,7 +24,7 @@ func main() {
 	signal.Notify(sigc, os.Interrupt, os.Kill)
 	config.LoadDefaults()
 	log.SetLevel(log.DEBUG)
-	homieClient := homie.NewClient("devices/", "172.20.0.100", 1883, false, false, "weatherStation")
+	homieClient := homie.NewClient(config.Prefix(), config.Host(), config.Port(), config.Ssl(), config.SslAuth(), "weatherStation")
 	radioClient := radio.NewClient(100, 1, func(sensorId byte, metric radio.Metric) {
 		nodes := homieClient.Nodes()
 		strNodeId := strconv.Itoa(int(sensorId))
@@ -56,13 +56,14 @@ func main() {
 		node.Set("uptime", intToString(metric.Uptime))
 
 	})
-	homieClient.AddConfigCallback(func(config string) {
-		log.Info("configuration changed: restarting")
-		log.Debug("config changeset: ", config)
-		homieClient.Restart()
+	homieClient.AddConfigCallback(func(payload string) {
+		log.Debug("config changeset: ", payload)
+		config.MergeJSONString(payload)
+		log.Debug("new config: ", config.Dump())
+		homieClient.Reconfigure(config.Prefix(), config.Host(), config.Port(), config.Ssl(), config.SslAuth())
 	})
-	homieClient.Start()
-	radioClient.Start("azertyuiopqsdfgh", "433")
+	go homieClient.Start()
+	go radioClient.Start("azertyuiopqsdfgh", "433")
 	select {
 	case <-sigc:
 		log.Warn("received interrupt - aborting operations")

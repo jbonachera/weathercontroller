@@ -3,6 +3,7 @@ package homie
 import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/google/uuid"
+	"github.com/jbonachera/weathercontroller/log"
 	"strconv"
 	"time"
 )
@@ -20,6 +21,7 @@ type Client interface {
 	AddConfigCallback(func(config string))
 	AddNode(name string, nodeType string, properties []string, settables []SettableProperty)
 	Nodes() map[string]Node
+	Reconfigure(prefix string, host string, port int, ssl bool, sslAuth bool)
 }
 type SettableProperty struct {
 	Name     string
@@ -98,4 +100,14 @@ func (homieClient *client) AddConfigCallback(callback func(config string)) {
 		callback(payload)
 	})
 	homieClient.configCallbacks = append(homieClient.configCallbacks, callback)
+}
+
+func (homieClient *client) Reconfigure(prefix string, host string, port int, ssl bool, sslAuth bool) {
+	homieClient.prefix = prefix
+	homieClient.server = host
+	homieClient.port = port
+	homieClient.ssl = ssl
+	homieClient.ssl_auth = sslAuth
+	log.Info("configuration changed: restarting")
+	homieClient.Restart()
 }
