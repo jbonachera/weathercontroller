@@ -12,15 +12,12 @@ import (
 )
 
 func NewClient(prefix string, server string, port int, ssl bool, ssl_auth bool, firmwareName string) Client {
-	url := server + ":" + strconv.Itoa(port)
-	if ssl {
-		url = "ssl://" + url
-	} else {
-		url = "tcp://" + url
-	}
 	return &client{
 		prefix:        prefix,
-		url:           url,
+		server:        server,
+		port:          port,
+		ssl:           ssl,
+		ssl_auth:      ssl_auth,
 		bootTime:      time.Now(),
 		firmwareName:  firmwareName,
 		nodes:         map[string]Node{},
@@ -31,7 +28,7 @@ func NewClient(prefix string, server string, port int, ssl bool, ssl_auth bool, 
 }
 func (homieClient *client) getMQTTOptions() *mqtt.ClientOptions {
 	o := mqtt.NewClientOptions()
-	o.AddBroker(homieClient.url)
+	o.AddBroker(homieClient.Url())
 	o.SetClientID(homieClient.Id())
 	o.SetWill(homieClient.getDevicePrefix()+"$online", "false", 1, true)
 	o.SetKeepAlive(10 * time.Second)
@@ -92,6 +89,7 @@ func (homieClient *client) Start() error {
 	tries := 0
 	log.Debug("creating mqtt client")
 	homieClient.mqttClient = mqtt.NewClient(homieClient.getMQTTOptions())
+	homieClient.bootTime = time.Now()
 	log.Debug("connecting to mqtt server")
 	for !homieClient.mqttClient.IsConnected() && tries < 10 {
 		if token := homieClient.mqttClient.Connect(); token.Wait() && token.Error() != nil {

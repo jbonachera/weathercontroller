@@ -3,6 +3,7 @@ package homie
 import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/google/uuid"
+	"strconv"
 	"time"
 )
 
@@ -39,7 +40,10 @@ type client struct {
 	ip             string
 	prefix         string
 	mac            string
-	url            string
+	server         string
+	port           int
+	ssl            bool
+	ssl_auth       bool
 	firmwareName   string
 	stopChan       chan bool
 	stopStatusChan chan bool
@@ -59,7 +63,14 @@ func (homieClient *client) Prefix() string {
 }
 
 func (homieClient *client) Url() string {
-	return homieClient.url
+	url := homieClient.server + ":" + strconv.Itoa(homieClient.port)
+	if homieClient.ssl {
+		url = "ssl://" + url
+	} else {
+		url = "tcp://" + url
+	}
+
+	return url
 }
 func (homieClient *client) Mac() string {
 	return homieClient.mac
