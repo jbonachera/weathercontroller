@@ -85,10 +85,6 @@ func (homieClient *client) onConnectHandler(client mqtt.Client) {
 	homieClient.publish("$fw/version", "0.0.1")
 	homieClient.publish("$implementation", "vx-go-homie")
 
-	homieClient.subscribe("$implementation/config/set", func(path string, payload string) {
-		homieClient.Restart()
-	})
-
 	// $online must be sent last
 	homieClient.publish("$online", "true")
 }

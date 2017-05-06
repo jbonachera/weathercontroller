@@ -56,6 +56,10 @@ func main() {
 		node.Set("uptime", intToString(metric.Uptime))
 
 	})
+	homieClient.SetConfigCallback(func(config string) {
+		log.Info("configuration changed: restarting")
+		homieClient.Restart()
+	})
 	homieClient.Start()
 	radioClient.Start("azertyuiopqsdfgh", "433")
 	select {
