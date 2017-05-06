@@ -13,16 +13,17 @@ import (
 
 func NewClient(prefix string, server string, port int, ssl bool, ssl_auth bool, firmwareName string) Client {
 	return &client{
-		prefix:        prefix,
-		server:        server,
-		port:          port,
-		ssl:           ssl,
-		ssl_auth:      ssl_auth,
-		bootTime:      time.Now(),
-		firmwareName:  firmwareName,
-		nodes:         map[string]Node{},
-		publishChan:   make(chan stateMessage, 10),
-		subscribeChan: make(chan subscribeMessage, 10),
+		prefix:          prefix,
+		server:          server,
+		port:            port,
+		ssl:             ssl,
+		ssl_auth:        ssl_auth,
+		bootTime:        time.Now(),
+		firmwareName:    firmwareName,
+		nodes:           map[string]Node{},
+		publishChan:     make(chan stateMessage, 10),
+		subscribeChan:   make(chan subscribeMessage, 10),
+		unsubscribeChan: make(chan unsubscribeMessage, 10),
 	}
 
 }
@@ -40,6 +41,13 @@ func (homieClient *client) publish(subtopic string, payload string) string {
 	id := uuid.New()
 	homieClient.publishChan <- stateMessage{subtopic: subtopic, payload: payload, Uuid: id}
 	log.Trace("publication id", id, "submitted")
+	return id.String()
+}
+
+func (homieClient *client) unsubscribe(subtopic string) string {
+	id := uuid.New()
+	homieClient.unsubscribeChan <- unsubscribeMessage{subtopic: subtopic, Uuid: id}
+	log.Trace("unsubscription id", id, "submitted")
 	return id.String()
 }
 
@@ -120,6 +128,11 @@ func (homieClient *client) loop() {
 			homieClient.mqttClient.Publish(topic, 1, true, msg.payload)
 			log.Trace("publication id", msg.Uuid.String(), "processed")
 			break
+		case msg := <-homieClient.unsubscribeChan:
+			topic := homieClient.getDevicePrefix() + msg.subtopic
+			homieClient.mqttClient.Unsubscribe(topic)
+			log.Trace("unsubscription id", msg.Uuid, "processed")
+			break
 		case msg := <-homieClient.subscribeChan:
 			topic := homieClient.getDevicePrefix() + msg.subtopic
 			homieClient.mqttClient.Subscribe(topic, 1, func(mqttClient mqtt.Client, mqttMessage mqtt.Message) {
@@ -180,6 +193,11 @@ func (homieClient *client) publishNode(node Node) {
 			log.Debug("Settable property update (from path", path, "):", prop, " -> ", payload)
 			homieClient.nodes[name].Set(prop, payload)
 			property.Callback(payload)
+		})
+		homieClient.subscribe(name+"/"+prop, func(path string, payload string) {
+			log.Debug("restoring old value for property ", prop, ": ", payload)
+			homieClient.nodes[name].Set(prop, payload)
+			homieClient.unsubscribe(name + "/" + prop)
 		})
 		settablesList = append(settablesList, property.Name+":settable")
 	}

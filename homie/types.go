@@ -35,23 +35,28 @@ type subscribeMessage struct {
 	subtopic string
 	callback func(path string, payload string)
 }
+type unsubscribeMessage struct {
+	Uuid     uuid.UUID
+	subtopic string
+}
 type client struct {
-	id             string
-	ip             string
-	prefix         string
-	mac            string
-	server         string
-	port           int
-	ssl            bool
-	ssl_auth       bool
-	firmwareName   string
-	stopChan       chan bool
-	stopStatusChan chan bool
-	publishChan    chan stateMessage
-	subscribeChan  chan subscribeMessage
-	bootTime       time.Time
-	mqttClient     mqtt.Client
-	nodes          map[string]Node
+	id              string
+	ip              string
+	prefix          string
+	mac             string
+	server          string
+	port            int
+	ssl             bool
+	ssl_auth        bool
+	firmwareName    string
+	stopChan        chan bool
+	stopStatusChan  chan bool
+	publishChan     chan stateMessage
+	subscribeChan   chan subscribeMessage
+	unsubscribeChan chan unsubscribeMessage
+	bootTime        time.Time
+	mqttClient      mqtt.Client
+	nodes           map[string]Node
 }
 
 func (homieClient *client) Id() string {
