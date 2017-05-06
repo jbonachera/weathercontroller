@@ -56,8 +56,9 @@ func main() {
 		node.Set("uptime", intToString(metric.Uptime))
 
 	})
-	homieClient.SetConfigCallback(func(config string) {
+	homieClient.AddConfigCallback(func(config string) {
 		log.Info("configuration changed: restarting")
+		log.Debug("config changeset: ", config)
 		homieClient.Restart()
 	})
 	homieClient.Start()

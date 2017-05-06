@@ -17,7 +17,7 @@ type Client interface {
 	Mac() string
 	Stop() error
 	FirmwareName() string
-	SetConfigCallback(func(config string))
+	AddConfigCallback(func(config string))
 	AddNode(name string, nodeType string, properties []string, settables []SettableProperty)
 	Nodes() map[string]Node
 }
@@ -92,8 +92,7 @@ func (homieClient *client) Nodes() map[string]Node {
 	return homieClient.nodes
 }
 
-func (homieClient *client) SetConfigCallback(callback func(config string)) {
-	homieClient.unsubscribe("$implementation/config/set")
+func (homieClient *client) AddConfigCallback(callback func(config string)) {
 	homieClient.subscribe("$implementation/config/set", func(path string, payload string) {
 		callback(payload)
 	})
