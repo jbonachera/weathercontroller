@@ -59,6 +59,7 @@ type client struct {
 	bootTime        time.Time
 	mqttClient      mqtt.Client
 	nodes           map[string]Node
+	configCallbacks []func(config string)
 }
 
 func (homieClient *client) Id() string {
@@ -96,4 +97,5 @@ func (homieClient *client) AddConfigCallback(callback func(config string)) {
 	homieClient.subscribe("$implementation/config/set", func(path string, payload string) {
 		callback(payload)
 	})
+	homieClient.configCallbacks = append(homieClient.configCallbacks, callback)
 }

@@ -210,7 +210,14 @@ func (homieClient *client) Restart() error {
 	homieClient.Stop()
 	homieClient.Start()
 	for _, node := range homieClient.Nodes() {
+		log.Info("restoring node ", node.Name())
 		homieClient.publishNode(node)
+	}
+	for idx, callback := range homieClient.configCallbacks {
+		log.Info("restoring callback ", idx)
+		homieClient.subscribe("$implementation/config/set", func(path string, payload string) {
+			callback(payload)
+		})
 	}
 	return nil
 }
