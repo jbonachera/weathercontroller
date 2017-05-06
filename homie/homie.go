@@ -11,74 +11,6 @@ import (
 	"time"
 )
 
-type Client interface {
-	Start() error
-	Id() string
-	Url() string
-	Ip() string
-	Prefix() string
-	Mac() string
-	Stop() error
-	FirmwareName() string
-	AddNode(name string, nodeType string, properties []string, settables []SettableProperty)
-	Nodes() map[string]Node
-}
-
-type SettableProperty struct {
-	Name     string
-	Callback func(payload string)
-}
-
-// TODO track message processing time
-type stateMessage struct {
-	Uuid     uuid.UUID
-	subtopic string
-	payload  string
-}
-type subscribeMessage struct {
-	Uuid     uuid.UUID
-	subtopic string
-	callback func(path string, payload string)
-}
-type client struct {
-	id             string
-	ip             string
-	prefix         string
-	mac            string
-	url            string
-	firmwareName   string
-	stopChan       chan bool
-	stopStatusChan chan bool
-	publishChan    chan stateMessage
-	subscribeChan  chan subscribeMessage
-	bootTime       time.Time
-	mqttClient     mqtt.Client
-	nodes          map[string]Node
-}
-
-func findMacAndIP(ifs []net.Interface) (string, string, error) {
-	for _, v := range ifs {
-		if v.Flags&net.FlagLoopback != net.FlagLoopback && v.Flags&net.FlagUp == net.FlagUp {
-			h := v.HardwareAddr.String()
-			if len(h) == 0 {
-				continue
-			} else {
-				addresses, _ := v.Addrs()
-				if len(addresses) > 0 {
-					ip := strings.Split(addresses[0].String(), "/")[0]
-					return h, ip, nil
-				}
-			}
-		}
-	}
-	return "", "", errors.New("could not find a valid network interface")
-
-}
-
-func generateHomieID(mac string) string {
-	return strings.Replace(mac, ":", "", -1)
-}
-
 func NewClient(prefix string, server string, port int, ssl bool, ssl_auth bool, firmwareName string) Client {
 	url := server + ":" + strconv.Itoa(port)
 	if ssl {
@@ -96,9 +28,6 @@ func NewClient(prefix string, server string, port int, ssl bool, ssl_auth bool, 
 		subscribeChan: make(chan subscribeMessage, 10),
 	}
 
-}
-func (homieClient *client) getDevicePrefix() string {
-	return homieClient.Prefix() + homieClient.Id() + "/"
 }
 func (homieClient *client) getMQTTOptions() *mqtt.ClientOptions {
 	o := mqtt.NewClientOptions()
@@ -229,27 +158,6 @@ func (homieClient *client) Stop() error {
 	}
 }
 
-func (homieClient *client) Id() string {
-	return homieClient.id
-}
-
-func (homieClient *client) Prefix() string {
-	return homieClient.prefix
-}
-
-func (homieClient *client) Url() string {
-	return homieClient.url
-}
-func (homieClient *client) Mac() string {
-	return homieClient.mac
-}
-func (homieClient *client) Ip() string {
-	return homieClient.ip
-}
-func (homieClient *client) FirmwareName() string {
-	return homieClient.firmwareName
-}
-
 func (homieClient *client) AddNode(name string, nodeType string, properties []string, settables []SettableProperty) {
 	homieClient.nodes[name] = NewNode(
 		name, nodeType, properties, settables,
@@ -285,9 +193,6 @@ func (homieClient *client) publishNode(node Node) {
 
 }
 
-func (homieClient *client) Nodes() map[string]Node {
-	return homieClient.nodes
-}
 func (homieClient *client) Restart() error {
 	log.Info("restarting mqtt subsystem")
 	homieClient.Stop()
