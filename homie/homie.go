@@ -149,7 +149,11 @@ func (homieClient *client) onConnectHandler(client mqtt.Client) {
 	homieClient.publish("$localip", homieClient.Ip())
 	homieClient.publish("$fw/Name", homieClient.FirmwareName())
 	homieClient.publish("$fw/version", "0.0.1")
-	homieClient.publish("implementation", "vx-go-homie")
+	homieClient.publish("$implementation", "vx-go-homie")
+
+	homieClient.subscribe("$implementation/config/set", func(path string, payload string) {
+		homieClient.Restart()
+	})
 
 	// $online must be sent last
 	homieClient.publish("$online", "true")
@@ -248,11 +252,19 @@ func (homieClient *client) FirmwareName() string {
 
 func (homieClient *client) AddNode(name string, nodeType string, properties []string, settables []SettableProperty) {
 	homieClient.nodes[name] = NewNode(
-		name, nodeType, properties,
+		name, nodeType, properties, settables,
 		func(property string, value string) {
 			homieClient.publish(name+"/"+property, value)
 		})
+	homieClient.publishNode(homieClient.nodes[name])
+}
+func (homieClient *client) publishNode(node Node) {
+	name := node.Name()
+	nodeType := node.Type()
+	settables := node.Settables()
+
 	homieClient.publish(name+"/$type", nodeType)
+
 	propertyCsv := strings.Join(homieClient.nodes[name].Properties(), ",")
 	settablesList := []string{}
 	for _, property := range settables {
@@ -275,4 +287,13 @@ func (homieClient *client) AddNode(name string, nodeType string, properties []st
 
 func (homieClient *client) Nodes() map[string]Node {
 	return homieClient.nodes
+}
+func (homieClient *client) Restart() error {
+	log.Info("restarting mqtt subsystem")
+	homieClient.Stop()
+	homieClient.Start()
+	for _, node := range homieClient.Nodes() {
+		homieClient.publishNode(node)
+	}
+	return nil
 }
