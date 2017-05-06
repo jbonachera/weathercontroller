@@ -1,7 +1,7 @@
 package homie
 
 import (
-	log "github.com/yanyiwu/simplelog"
+	"github.com/jbonachera/weathercontroller/log"
 )
 
 type Node interface {

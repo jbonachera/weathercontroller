@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/jbonachera/rfm69"
-	log "github.com/yanyiwu/simplelog"
+	"github.com/jbonachera/weathercontroller/log"
 )
 
 type Metric struct {

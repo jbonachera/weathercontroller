@@ -4,7 +4,7 @@ import (
 	"errors"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/google/uuid"
-	log "github.com/yanyiwu/simplelog"
+	"github.com/jbonachera/weathercontroller/log"
 	"net"
 	"strconv"
 	"strings"
@@ -113,14 +113,14 @@ func (homieClient *client) getMQTTOptions() *mqtt.ClientOptions {
 func (homieClient *client) publish(subtopic string, payload string) string {
 	id := uuid.New()
 	homieClient.publishChan <- stateMessage{subtopic: subtopic, payload: payload, Uuid: id}
-	log.Debug("publication id", id, "submitted")
+	log.Trace("publication id", id, "submitted")
 	return id.String()
 }
 
 func (homieClient *client) subscribe(subtopic string, callback func(path string, payload string)) string {
 	id := uuid.New()
 	homieClient.subscribeChan <- subscribeMessage{subtopic: subtopic, callback: callback, Uuid: id}
-	log.Debug("subscription id", id, "submitted")
+	log.Trace("subscription id", id, "submitted")
 	return id.String()
 }
 
@@ -183,14 +183,14 @@ func (homieClient *client) loop() {
 		case msg := <-homieClient.publishChan:
 			topic := homieClient.getDevicePrefix() + msg.subtopic
 			homieClient.mqttClient.Publish(topic, 1, true, msg.payload)
-			log.Debug("publication id", msg.Uuid.String(), "processed")
+			log.Trace("publication id", msg.Uuid.String(), "processed")
 			break
 		case msg := <-homieClient.subscribeChan:
 			topic := homieClient.getDevicePrefix() + msg.subtopic
 			homieClient.mqttClient.Subscribe(topic, 1, func(mqttClient mqtt.Client, mqttMessage mqtt.Message) {
 				msg.callback(mqttMessage.Topic(), string(mqttMessage.Payload()))
 			})
-			log.Debug("subscription id", msg.Uuid, "processed")
+			log.Trace("subscription id", msg.Uuid, "processed")
 			break
 		case <-homieClient.stopChan:
 			run = false

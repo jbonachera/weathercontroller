@@ -3,8 +3,8 @@ package main
 import (
 	"github.com/jbonachera/weathercontroller/config"
 	"github.com/jbonachera/weathercontroller/homie"
+	"github.com/jbonachera/weathercontroller/log"
 	"github.com/jbonachera/weathercontroller/radio"
-	log "github.com/yanyiwu/simplelog"
 	"os"
 	"os/signal"
 	"strconv"
@@ -19,10 +19,11 @@ func intToString(i int32) string {
 	return str
 }
 func main() {
+	log.Info("main process starting")
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, os.Kill)
 	config.LoadDefaults()
-	log.SetLevel(log.LEVEL_INFO)
+	log.SetLevel(log.DEBUG)
 	homieClient := homie.NewClient("devices/", "172.20.0.100", 1883, false, false, "weatherStation")
 	radioClient := radio.NewClient(100, 1, func(sensorId byte, metric radio.Metric) {
 		nodes := homieClient.Nodes()
@@ -51,6 +52,7 @@ func main() {
 		node.Set("pressure", floatToString(metric.Pressure))
 		node.Set("battery", floatToString(metric.Battery))
 		node.Set("rssi", intToString(metric.RSSI))
+		node.Set("uptime", intToString(metric.Uptime))
 
 	})
 	homieClient.Start()
