@@ -1,6 +1,9 @@
 package log
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 var logChan chan Message
 
@@ -22,5 +25,5 @@ func loop() {
 }
 
 func printLog(msg Message) {
-	fmt.Printf("[%s] %s\n", Severity(msg.Severity()), msg.Payload())
+	fmt.Printf("%s [%s] %s\n", msg.CreationDate().Format(time.RFC3339), Severity(msg.Severity()), msg.Payload())
 }
