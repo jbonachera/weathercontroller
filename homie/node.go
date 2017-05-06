@@ -1,9 +1,5 @@
 package homie
 
-import (
-	"github.com/jbonachera/weathercontroller/log"
-)
-
 type Node interface {
 	Name() string
 	Properties() []string
@@ -45,7 +41,6 @@ func (node *node) Properties() []string {
 }
 
 func (node *node) Set(property string, value string) {
-	log.Debug("node", node.name, ":", property, " -> ", value)
 	node.properties[property] = value
 	node.callback(property, value)
 }

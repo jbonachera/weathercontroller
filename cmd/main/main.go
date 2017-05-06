@@ -30,6 +30,7 @@ func main() {
 		strNodeId := strconv.Itoa(int(sensorId))
 		node, found := nodes[strNodeId]
 		if !found {
+			log.Info("discovered new sensor: ", sensorId)
 			homieClient.AddNode(strNodeId, "weather_sensor",
 				[]string{
 					"temperature",
@@ -46,7 +47,7 @@ func main() {
 			)
 			node = nodes[strNodeId]
 		}
-		log.Info("Sensor " + string(sensorId) + ":" + metric.Dump())
+		log.Info("Sensor ", sensorId, ": "+metric.Dump())
 		node.Set("temperature", floatToString(metric.Temperature))
 		node.Set("humidity", floatToString(metric.Humidity))
 		node.Set("pressure", floatToString(metric.Pressure))

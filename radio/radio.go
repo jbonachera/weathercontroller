@@ -43,15 +43,19 @@ func NewClient(networkId int, clientId int, callback func(sensorId byte, metric 
 
 func (c *client) Start(encryptionKey string, frequency string) error {
 	var err error
+	log.Debug("creating radio driver")
 	c.rfm, err = rfm69.NewDevice(byte(c.clientId), byte(c.networkId), true)
 	if err != nil {
 		return err
 	}
+	log.Debug("configuring encryption key")
 	err = c.rfm.Encrypt([]byte(encryptionKey))
 	if err != nil {
 		panic(err)
 	}
+	log.Debug("setting radio frequency")
 	c.rfm.SetFrequency(frequency)
+	log.Debug("enabling radio receive mode")
 	c.rfm.SetMode(rfm69.RF_OPMODE_RECEIVER)
 	go c.loop()
 	return nil
@@ -77,7 +81,7 @@ func (c *client) loop() {
 	c.rfm.OnReceive = func(d *rfm69.Data) {
 		rx <- d
 	}
-	log.Info("Radio subsystem started")
+	log.Info("radio subsystem started")
 	c.running = true
 	for c.running {
 		select {

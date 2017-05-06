@@ -157,12 +157,16 @@ func (homieClient *client) onConnectHandler(client mqtt.Client) {
 
 func (homieClient *client) Start() error {
 	tries := 0
+	log.Debug("creating mqtt client")
 	homieClient.mqttClient = mqtt.NewClient(homieClient.getMQTTOptions())
+	log.Debug("connecting to mqtt server")
 	for !homieClient.mqttClient.IsConnected() && tries < 10 {
 		if token := homieClient.mqttClient.Connect(); token.Wait() && token.Error() != nil {
+			log.Warn("connection to mqtt server failed. will retry in 5 seconds")
 			time.Sleep(5 * time.Second)
 			tries += 1
 		} else {
+			log.Debug("connected to mqtt server")
 		}
 	}
 	if tries >= 10 {
@@ -177,7 +181,7 @@ func (homieClient *client) loop() {
 	run := true
 	homieClient.stopChan = make(chan bool, 1)
 	homieClient.stopStatusChan = make(chan bool, 1)
-	log.Info("MQTT subsystem started")
+	log.Info("mqtt subsystem started")
 	for run {
 		select {
 		case msg := <-homieClient.publishChan:
