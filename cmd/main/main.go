@@ -22,7 +22,7 @@ func main() {
 	log.Info("main process starting")
 	sigc := make(chan os.Signal, 1)
 	signal.Notify(sigc, os.Interrupt, os.Kill)
-	config.LoadDefaults()
+	config.LoadPersisted()
 	log.SetLevel(log.DEBUG)
 	homieClient := homie.NewClient(config.Prefix(), config.Host(), config.Port(), config.Ssl(), config.SslAuth(), "weatherStation")
 	radioClient := radio.NewClient(100, 1, func(sensorId byte, metric radio.Metric) {
