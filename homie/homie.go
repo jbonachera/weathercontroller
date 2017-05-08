@@ -98,8 +98,14 @@ func (homieClient *client) Start() error {
 	for !homieClient.mqttClient.IsConnected() && tries < 10 {
 		if token := homieClient.mqttClient.Connect(); token.Wait() && token.Error() != nil {
 			log.Warn("connection to mqtt server failed. will retry in 5 seconds")
-			time.Sleep(5 * time.Second)
-			tries += 1
+			select {
+			case <-time.After(5 * time.Second):
+				tries += 1
+			case <-homieClient.stopChan:
+				log.Fatal("could not connect to MQTT: we are being shutdown")
+				homieClient.stopStatusChan <- true
+				return errors.New("could not connect to MQTT: we are being shutdown")
+			}
 		} else {
 			log.Debug("connected to mqtt server")
 		}
@@ -208,16 +214,21 @@ func (homieClient *client) publishNode(node Node) {
 func (homieClient *client) Restart() error {
 	log.Info("restarting mqtt subsystem")
 	homieClient.Stop()
-	homieClient.Start()
-	for _, node := range homieClient.Nodes() {
-		log.Info("restoring node ", node.Name())
-		homieClient.publishNode(node)
+	err := homieClient.Start()
+	if err == nil {
+		for _, node := range homieClient.Nodes() {
+			log.Info("restoring node ", node.Name())
+			homieClient.publishNode(node)
+		}
+		for idx, callback := range homieClient.configCallbacks {
+			log.Info("restoring callback ", idx)
+			homieClient.subscribe("$implementation/config/set", func(path string, payload string) {
+				callback(payload)
+			})
+		}
+		return nil
+	} else {
+		log.Fatal("could not finish restart: mqtt subsystem failed to start")
+		return errors.New("could not finish restart: mqtt subsystem failed to start")
 	}
-	for idx, callback := range homieClient.configCallbacks {
-		log.Info("restoring callback ", idx)
-		homieClient.subscribe("$implementation/config/set", func(path string, payload string) {
-			callback(payload)
-		})
-	}
-	return nil
 }
