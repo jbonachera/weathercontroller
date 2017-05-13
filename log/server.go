@@ -6,9 +6,11 @@ import (
 )
 
 var logChan chan Message
+var doneChan chan bool
 
 func init() {
 	logChan = make(chan Message, 50)
+	doneChan = make(chan bool, 1)
 	go loop()
 }
 
@@ -17,9 +19,16 @@ func loop() {
 	run := true
 	for run {
 		select {
-		case msg := <-logChan:
-			printLog(msg)
-			msg.Close()
+		case msg, chanOpen := <-logChan:
+			if !chanOpen {
+				msg, _ := NewMessage(INFO, "log subsystem flushed and closed")
+				printLog(msg)
+				doneChan <- true
+				return
+			} else {
+				printLog(msg)
+				msg.Close()
+			}
 		}
 	}
 }

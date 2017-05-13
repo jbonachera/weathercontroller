@@ -3,14 +3,17 @@ package log
 import "fmt"
 
 var logLevel int = INFO
+var closed bool = false
 
 func publish(severity int, a ...interface{}) {
-	if severity >= logLevel {
-		msg, err := NewMessage(severity, fmt.Sprint(a...))
-		if err == nil {
-			logChan <- msg
-		} else {
-			fmt.Println(err)
+	if !closed {
+		if severity >= logLevel {
+			msg, err := NewMessage(severity, fmt.Sprint(a...))
+			if err == nil {
+				logChan <- msg
+			} else {
+				fmt.Println(err)
+			}
 		}
 	}
 }
@@ -43,4 +46,11 @@ func SetLevel(severity int) {
 	if severity <= FATAL {
 		logLevel = severity
 	}
+}
+
+func Flush() {
+	Debug("flushing logs...")
+	closed = true
+	close(logChan)
+	<-doneChan
 }

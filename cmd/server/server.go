@@ -65,11 +65,14 @@ func main() {
 	})
 	go homieClient.Start()
 	go radioClient.Start("azertyuiopqsdfgh", "433")
+	defer homieClient.Stop()
+	defer radioClient.Stop()
+	defer config.Stop()
+	defer log.Flush()
+
 	select {
 	case <-sigc:
 		log.Warn("received interrupt - aborting operations")
-		homieClient.Stop()
-		radioClient.Stop()
 		break
 	}
 	log.Info("main process finished")
