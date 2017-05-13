@@ -61,6 +61,7 @@ func main() {
 		config.MergeJSONString(payload)
 		log.Debug("new config: ", config.Dump())
 		homieClient.Reconfigure(config.Prefix(), config.Host(), config.Port(), config.Ssl(), config.SslAuth())
+		config.Save()
 	})
 	go homieClient.Start()
 	go radioClient.Start("azertyuiopqsdfgh", "433")
