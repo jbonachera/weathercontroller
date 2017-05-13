@@ -19,9 +19,17 @@ const (
      "port": 1883,
      "ssl": true,
      "ssl_auth": true
-   }
+   },
+   "homie": {
+     "name:" "weatherController"
+    }
  }
 */
+
+type HomieFormat struct {
+	Name string `json:"name,omitempty"`
+}
+
 type MQTTFormat struct {
 	Prefix   string `json:"prefix,omitempty"`
 	Host     string `json:"host,omitempty"`
@@ -30,7 +38,8 @@ type MQTTFormat struct {
 	Ssl_Auth bool   `json:"ssl_auth,omitempty"`
 }
 type Format struct {
-	Mqtt       MQTTFormat `json:"mqtt,omitempty"`
+	Mqtt       MQTTFormat  `json:"mqtt,omitempty"`
+	Homie      HomieFormat `json:"homie,omitempty"`
 	sync.Mutex `json:"-"`
 }
 
@@ -45,6 +54,9 @@ func LoadDefaults() {
 			Port:     1883,
 			Ssl:      false,
 			Ssl_Auth: false,
+		},
+		Homie: HomieFormat{
+			Name: "weatherController",
 		},
 	}
 }
@@ -121,4 +133,7 @@ func Port() int {
 }
 func Prefix() string {
 	return store.Mqtt.Prefix
+}
+func HomieName() string {
+	return store.Homie.Name
 }
