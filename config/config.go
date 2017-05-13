@@ -5,7 +5,6 @@ import (
 	"errors"
 	"github.com/boltdb/bolt"
 	"github.com/jbonachera/weathercontroller/log"
-	"sync"
 )
 
 const (
@@ -38,12 +37,12 @@ type MQTTFormat struct {
 	Ssl_Auth bool   `json:"ssl_auth,omitempty"`
 }
 type Format struct {
-	Mqtt       MQTTFormat  `json:"mqtt,omitempty"`
-	Homie      HomieFormat `json:"homie,omitempty"`
-	sync.Mutex `json:"-"`
+	Mqtt  MQTTFormat  `json:"mqtt,omitempty"`
+	Homie HomieFormat `json:"homie,omitempty"`
 }
 
 var store Format = Format{}
+var db *bolt.DB = nil
 
 func LoadDefaults() {
 	log.Debug("loading default configuration")
@@ -71,51 +70,63 @@ func Dump() string {
 	buf, _ := json.Marshal(store)
 	return string(buf)
 }
-func Save() {
-	store.Lock()
-	defer store.Unlock()
-	db, err := bolt.Open(datadir, 0600, nil)
+
+func init() {
+	var err error
+	db, err = bolt.Open(datadir, 0600, nil)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
-	defer db.Close()
+}
+
+func Stop() {
+	db.Close()
+}
+
+func Save() {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Fatal("Unknown error occured when saving config")
+			log.Fatal(r)
+		}
+	}()
+	log.Debug("updating saved configuration")
+	log.Debug("opening database")
+	log.Debug("aquiring r/w transaction")
 	db.Update(func(tx *bolt.Tx) error {
+		log.Debug("transaction aquired")
 		b := tx.Bucket([]byte("config"))
+		if b == nil {
+			var err error
+			b, err = tx.CreateBucket([]byte("config"))
+			if err != nil {
+				return err
+			}
+		}
 		buf, err := json.Marshal(store)
 		if err != nil {
 			return err
 		}
+		log.Debug("updating data")
 		return b.Put([]byte("store"), buf)
 	})
-	db.Close()
+	log.Debug("closing database")
 }
 
 func LoadPersisted() {
-	store.Lock()
-	db, err := bolt.Open(datadir, 0600, nil)
-	if err != nil {
-		log.Error(err)
-		log.Error("fallback to default config")
-		store.Unlock()
-		LoadDefaults()
-		return
-	}
 	if db.View(func(tx *bolt.Tx) error {
 		b := tx.Bucket([]byte("config"))
 		if b != nil {
 			v := b.Get([]byte("store"))
 			json.Unmarshal(v, &store)
-			store.Unlock()
 			return nil
 		} else {
 			log.Warn("no persisted configuration found")
 			return errors.New("bucket 'config' not found")
 		}
 	}) != nil {
-		store.Unlock()
 		LoadDefaults()
 	}
-	db.Close()
 
 }
 
