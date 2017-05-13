@@ -110,7 +110,7 @@ func Save() {
 		log.Debug("updating data")
 		return b.Put([]byte("store"), buf)
 	})
-	log.Debug("closing database")
+	log.Debug("configuration updated")
 }
 
 func LoadPersisted() {
