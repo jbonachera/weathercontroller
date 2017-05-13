@@ -65,10 +65,17 @@ func main() {
 	})
 	go homieClient.Start()
 	go radioClient.Start("azertyuiopqsdfgh", "433")
-	defer homieClient.Stop()
-	defer radioClient.Stop()
-	defer config.Stop()
-	defer log.Flush()
+	defer func() {
+		homieClient.Stop()
+		radioClient.Stop()
+		config.Stop()
+		log.Flush()
+		if r := recover(); r != nil {
+			log.Fatal("Unknown error occured")
+			log.Fatal(r)
+			panic("")
+		}
+	}()
 
 	select {
 	case <-sigc:
