@@ -11,6 +11,7 @@ import (
 type Client interface {
 	Start() error
 	Restart() error
+	Name() string
 	Id() string
 	Url() string
 	Ip() string
@@ -21,7 +22,7 @@ type Client interface {
 	AddConfigCallback(func(config string))
 	AddNode(name string, nodeType string, properties []string, settables []SettableProperty)
 	Nodes() map[string]Node
-	Reconfigure(prefix string, host string, port int, ssl bool, sslAuth bool)
+	Reconfigure(prefix string, host string, port int, ssl bool, sslAuth bool, deviceName string)
 }
 type SettableProperty struct {
 	Name     string
@@ -45,6 +46,7 @@ type unsubscribeMessage struct {
 }
 type client struct {
 	id              string
+	name            string
 	ip              string
 	prefix          string
 	mac             string
@@ -88,6 +90,10 @@ func (homieClient *client) Mac() string {
 func (homieClient *client) Ip() string {
 	return homieClient.ip
 }
+func (homieClient *client) Name() string {
+	return homieClient.name
+}
+
 func (homieClient *client) FirmwareName() string {
 	return homieClient.firmwareName
 }
@@ -102,7 +108,8 @@ func (homieClient *client) AddConfigCallback(callback func(config string)) {
 	homieClient.configCallbacks = append(homieClient.configCallbacks, callback)
 }
 
-func (homieClient *client) Reconfigure(prefix string, host string, port int, ssl bool, sslAuth bool) {
+func (homieClient *client) Reconfigure(prefix string, host string, port int, ssl bool, sslAuth bool, deviceName string) {
+	homieClient.name = deviceName
 	homieClient.prefix = prefix
 	homieClient.server = host
 	homieClient.port = port

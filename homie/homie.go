@@ -11,8 +11,9 @@ import (
 	"time"
 )
 
-func NewClient(prefix string, server string, port int, ssl bool, ssl_auth bool, firmwareName string) Client {
+func NewClient(prefix string, server string, port int, ssl bool, ssl_auth bool, deviceName string, firmwareName string) Client {
 	return &client{
+		name:            deviceName,
 		prefix:          prefix,
 		server:          server,
 		port:            port,
@@ -77,7 +78,7 @@ func (homieClient *client) onConnectHandler(client mqtt.Client) {
 	go homieClient.loop()
 
 	homieClient.publish("$homie", "2.0.0")
-	homieClient.publish("$Name", homieClient.FirmwareName())
+	homieClient.publish("$Name", homieClient.Name())
 	homieClient.publish("$mac", homieClient.Mac())
 	homieClient.publish("$stats/interval", "10")
 	homieClient.publish("$localip", homieClient.Ip())
