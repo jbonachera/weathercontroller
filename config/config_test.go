@@ -14,17 +14,3 @@ func TestLoadDefaults(t *testing.T) {
 		t.Error("LoadDefaults should enable SSL: got SSL disabled")
 	}
 }
-func TestGet(t *testing.T) {
-	store = Format{
-		Mqtt: MQTTFormat{
-			Host:     "mock",
-			Port:     1883,
-			Ssl:      false,
-			Ssl_Auth: false,
-		},
-	}
-	currentConfig := Get()
-	if currentConfig.Mqtt.Host != "mock" {
-		t.Error("Get() should return the current configuration")
-	}
-}
