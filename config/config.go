@@ -26,15 +26,20 @@ const (
 */
 
 type HomieFormat struct {
-	Name string `json:"name,omitempty"`
+	Name   string `json:"name,omitempty"`
+	Prefix string `json:"prefix"`
 }
-
+type TLSFormat struct {
+	CA         string `json:"ca"`
+	ClientCert string `json:"client_cert"`
+	Privkey    string `json:"privkey"`
+}
 type MQTTFormat struct {
-	Prefix   string `json:"prefix,omitempty"`
-	Host     string `json:"host,omitempty"`
-	Port     int    `json:"port,omitempty"`
-	Ssl      bool   `json:"ssl,omitempty"`
-	Ssl_Auth bool   `json:"ssl_auth,omitempty"`
+	Prefix     string    `json:"prefix,omitempty"`
+	Host       string    `json:"host,omitempty"`
+	Port       int       `json:"port,omitempty"`
+	Ssl        bool      `json:"ssl,omitempty"`
+	Ssl_Config TLSFormat `json:"ssl_config,omitempty"`
 }
 type Format struct {
 	Mqtt  MQTTFormat  `json:"mqtt,omitempty"`
@@ -48,14 +53,19 @@ func LoadDefaults() {
 	log.Debug("loading default configuration")
 	store = Format{
 		Mqtt: MQTTFormat{
-			Prefix:   "devices/",
-			Host:     "172.20.0.100",
-			Port:     1883,
-			Ssl:      false,
-			Ssl_Auth: false,
+			Prefix: "",
+			Host:   "172.20.0.100",
+			Port:   1883,
+			Ssl:    false,
+			Ssl_Config: TLSFormat{
+				Privkey:    "",
+				CA:         "",
+				ClientCert: "",
+			},
 		},
 		Homie: HomieFormat{
-			Name: "weatherController",
+			Name:   "weatherController",
+			Prefix: "devices/",
 		},
 	}
 }
@@ -133,9 +143,6 @@ func LoadPersisted() {
 func Ssl() bool {
 	return store.Mqtt.Ssl
 }
-func SslAuth() bool {
-	return store.Mqtt.Ssl_Auth
-}
 func Host() string {
 	return store.Mqtt.Host
 }
@@ -143,8 +150,14 @@ func Port() int {
 	return store.Mqtt.Port
 }
 func Prefix() string {
-	return store.Mqtt.Prefix
+	return store.Homie.Prefix
 }
 func HomieName() string {
 	return store.Homie.Name
+}
+func SSLConfig() TLSFormat {
+	return store.Mqtt.Ssl_Config
+}
+func MQTTPrefix() string {
+	return store.Mqtt.Prefix
 }

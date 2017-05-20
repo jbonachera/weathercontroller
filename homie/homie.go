@@ -1,24 +1,30 @@
 package homie
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
+	"fmt"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/google/uuid"
+	"github.com/jbonachera/weathercontroller/config"
 	"github.com/jbonachera/weathercontroller/log"
+	"io/ioutil"
 	"net"
 	"strconv"
 	"strings"
 	"time"
 )
 
-func NewClient(prefix string, server string, port int, ssl bool, ssl_auth bool, deviceName string, firmwareName string) Client {
+func NewClient(prefix string, server string, port int, mqttPrefix string, ssl bool, ssl_config config.TLSFormat, deviceName string, firmwareName string) Client {
 	return &client{
 		name:            deviceName,
 		prefix:          prefix,
 		server:          server,
 		port:            port,
+		mqttPrefix:      mqttPrefix,
 		ssl:             ssl,
-		ssl_auth:        ssl_auth,
+		ssl_config:      ssl_config,
 		bootTime:        time.Now(),
 		firmwareName:    firmwareName,
 		nodes:           map[string]Node{},
@@ -35,6 +41,25 @@ func (homieClient *client) getMQTTOptions() *mqtt.ClientOptions {
 	o.SetWill(homieClient.getDevicePrefix()+"$online", "false", 1, true)
 	o.SetKeepAlive(10 * time.Second)
 	o.SetOnConnectHandler(homieClient.onConnectHandler)
+	if homieClient.ssl_config.Privkey != "" {
+		log.Debug("building TLS configuration")
+		cert, err := tls.LoadX509KeyPair(homieClient.ssl_config.ClientCert, homieClient.ssl_config.Privkey)
+
+		if err != nil {
+			log.Fatal(err)
+		} else {
+			log.Debug("loaded TLS certificate and private key from ", homieClient.ssl_config.ClientCert, " and ", homieClient.ssl_config.Privkey)
+			caCertPool := x509.NewCertPool()
+			log.Debug("loading CA certificate from ", homieClient.ssl_config.CA)
+			caCert, err := ioutil.ReadFile(homieClient.ssl_config.CA)
+			if err != nil {
+				log.Fatal(err)
+			}
+			caCertPool.AppendCertsFromPEM(caCert)
+			loadedConfig := &tls.Config{Certificates: []tls.Certificate{cert}, InsecureSkipVerify: true, RootCAs: caCertPool}
+			o.SetTLSConfig(loadedConfig)
+		}
+	}
 	return o
 }
 
@@ -95,9 +120,11 @@ func (homieClient *client) Start() error {
 	log.Debug("creating mqtt client")
 	homieClient.mqttClient = mqtt.NewClient(homieClient.getMQTTOptions())
 	homieClient.bootTime = time.Now()
-	log.Debug("connecting to mqtt server")
+	log.Debug("connecting to mqtt server ", homieClient.Url())
 	for !homieClient.mqttClient.IsConnected() && tries < 10 {
 		if token := homieClient.mqttClient.Connect(); token.Wait() && token.Error() != nil {
+			fmt.Println(token.Error().Error())
+			log.Error(token.Error())
 			log.Warn("connection to mqtt server failed. will retry in 5 seconds")
 			select {
 			case <-time.After(5 * time.Second):

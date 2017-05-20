@@ -3,6 +3,7 @@ package homie
 import (
 	mqtt "github.com/eclipse/paho.mqtt.golang"
 	"github.com/google/uuid"
+	"github.com/jbonachera/weathercontroller/config"
 	"github.com/jbonachera/weathercontroller/log"
 	"strconv"
 	"time"
@@ -22,7 +23,7 @@ type Client interface {
 	AddConfigCallback(func(config string))
 	AddNode(name string, nodeType string, properties []string, settables []SettableProperty)
 	Nodes() map[string]Node
-	Reconfigure(prefix string, host string, port int, ssl bool, sslAuth bool, deviceName string)
+	Reconfigure(prefix string, host string, port int, mqttPrefix string, ssl bool, sslAuth config.TLSFormat, deviceName string)
 }
 type SettableProperty struct {
 	Name     string
@@ -44,6 +45,7 @@ type unsubscribeMessage struct {
 	Uuid     uuid.UUID
 	subtopic string
 }
+
 type client struct {
 	id              string
 	name            string
@@ -52,8 +54,9 @@ type client struct {
 	mac             string
 	server          string
 	port            int
+	mqttPrefix      string
 	ssl             bool
-	ssl_auth        bool
+	ssl_config      config.TLSFormat
 	firmwareName    string
 	stopChan        chan bool
 	stopStatusChan  chan bool
@@ -81,7 +84,7 @@ func (homieClient *client) Url() string {
 	} else {
 		url = "tcp://" + url
 	}
-
+	url = url + homieClient.mqttPrefix
 	return url
 }
 func (homieClient *client) Mac() string {
@@ -108,13 +111,14 @@ func (homieClient *client) AddConfigCallback(callback func(config string)) {
 	homieClient.configCallbacks = append(homieClient.configCallbacks, callback)
 }
 
-func (homieClient *client) Reconfigure(prefix string, host string, port int, ssl bool, sslAuth bool, deviceName string) {
+func (homieClient *client) Reconfigure(prefix string, host string, port int, mqttPrefix string, ssl bool, sslConfig config.TLSFormat, deviceName string) {
 	homieClient.name = deviceName
+	homieClient.mqttPrefix = mqttPrefix
 	homieClient.prefix = prefix
 	homieClient.server = host
 	homieClient.port = port
 	homieClient.ssl = ssl
-	homieClient.ssl_auth = sslAuth
+	homieClient.ssl_config = sslConfig
 	log.Info("configuration changed: restarting")
 	homieClient.Restart()
 }
