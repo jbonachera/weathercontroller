@@ -24,7 +24,7 @@ func main() {
 	signal.Notify(sigc, os.Interrupt, os.Kill)
 	config.LoadPersisted()
 	log.SetLevel(log.DEBUG)
-	homieClient := homie.NewClient(config.Prefix(), config.Host(), config.Port(), config.MQTTPrefix(), config.Ssl(), config.SSLConfig(), config.HomieName(), "weatherStation")
+	homieClient := homie.NewClient(config.Prefix(), config.Host(), config.Port(), config.MQTTPrefix(), config.Ssl(), config.SSLConfig().CA, config.SSLConfig().ClientCert, config.SSLConfig().Privkey, config.HomieName(), "weatherStation")
 	radioClient := radio.NewClient(100, 1, func(sensorId byte, metric radio.Metric) {
 		nodes := homieClient.Nodes()
 		strNodeId := strconv.Itoa(int(sensorId))

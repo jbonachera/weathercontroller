@@ -16,7 +16,8 @@ import (
 	"time"
 )
 
-func NewClient(prefix string, server string, port int, mqttPrefix string, ssl bool, ssl_config config.TLSFormat, deviceName string, firmwareName string) Client {
+func NewClient(prefix string, server string, port int, mqttPrefix string, ssl bool, ssl_ca string, ssl_cert string, ssl_key string, deviceName string, firmwareName string) Client {
+
 	return &client{
 		name:            deviceName,
 		prefix:          prefix,
@@ -24,7 +25,7 @@ func NewClient(prefix string, server string, port int, mqttPrefix string, ssl bo
 		port:            port,
 		mqttPrefix:      mqttPrefix,
 		ssl:             ssl,
-		ssl_config:      ssl_config,
+		ssl_config:      config.TLSFormat{CA: ssl_ca, Privkey: ssl_key, ClientCert: ssl_cert},
 		bootTime:        time.Now(),
 		firmwareName:    firmwareName,
 		nodes:           map[string]Node{},
