@@ -219,11 +219,12 @@ func (homieClient *client) publishNode(node Node) {
 	settablesList := []string{}
 	for _, property := range settables {
 		log.Debug("Subscribing for settable properties notifications: ", property.Name)
-		prop := property.Name
+		myProp := property
+		prop := myProp.Name
 		homieClient.subscribe(name+"/"+prop+"/set", func(path string, payload string) {
 			log.Debug("Settable property update (from path", path, "):", prop, " -> ", payload)
 			homieClient.nodes[name].Set(prop, payload)
-			property.Callback(payload)
+			myProp.Callback(payload)
 		})
 		homieClient.subscribe(name+"/"+prop, func(path string, payload string) {
 			log.Debug("restoring old value for property ", prop, ": ", payload)
